@@ -29,7 +29,14 @@ fi
 
 export PIPENV_VENV_IN_PROJECT=1
 "$PIPENV_BIN" --python "$PYTHON_BIN"
-"$PIPENV_BIN" install --requirements requirements.txt
+
+VENV_PYTHON="$SCRIPT_DIR/.venv/bin/python"
+if [[ ! -x "$VENV_PYTHON" ]]; then
+  VENV_PYTHON="$("$PIPENV_BIN" --py)"
+fi
+
+"$VENV_PYTHON" -m pip install --upgrade pip setuptools wheel
+"$VENV_PYTHON" -m pip install -r requirements.txt
 
 cat <<EOF
 
