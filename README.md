@@ -237,6 +237,45 @@ Edit `~/.config/Claude/claude_desktop_config.json`:
 }
 ```
 
+### llama.cpp Integration
+
+HexStrike can use a local or remote llama.cpp server that exposes the OpenAI-compatible `/v1` API. Configure it with environment variables before starting the HexStrike server:
+
+```bash
+export LLAMA_API_URL="https://truck-kissable-caption.ngrok-free.dev/v1"
+export LLAMA_API_KEY_FILE="$HOME/.config/llama-ngrok/api-key.txt"
+export LLAMA_MODEL="/home/fatal0x01/models/qwen2.5-coder-14b-instruct-q4_k_m.gguf"
+export LLAMA_REQUEST_TIMEOUT="300"
+python3 hexstrike_server.py
+```
+
+`LLAMA_API_KEY` may be set directly instead of `LLAMA_API_KEY_FILE`. The file and direct environment variable are never returned by the API or logged.
+
+A convenience launcher is included:
+
+```bash
+./run_hexstrike.sh
+
+# Start the API and MCP stdio client together
+./run_hexstrike.sh --mcp --debug
+
+# Override defaults
+./run_hexstrike.sh --host 0.0.0.0 --port 8888 --llama-url https://example.ngrok.app/v1 --llama-key-file ~/.config/llama-ngrok/api-key.txt
+```
+
+Available llama.cpp endpoints:
+
+```bash
+curl http://localhost:8888/api/llm/health
+curl http://localhost:8888/api/llm/models
+
+curl -X POST http://localhost:8888/api/llm/chat/completions \
+  -H 'Content-Type: application/json' \
+  -d '{"messages":[{"role":"user","content":"Explain nmap and give an example"}]}'
+```
+
+The MCP server also exposes `llm_health`, `llm_models`, and `llm_chat` tools.
+
 ### VS Code Copilot Integration
 
 Configure VS Code settings in `.vscode/settings.json`:

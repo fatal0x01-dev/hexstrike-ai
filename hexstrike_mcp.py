@@ -5411,6 +5411,37 @@ def setup_mcp_server(hexstrike_client: HexStrikeClient) -> FastMCP:
 
         return result
 
+    @mcp.tool()
+    def llm_health() -> Dict[str, Any]:
+        """Check the configured llama.cpp OpenAI-compatible server."""
+        return hexstrike_client.safe_get("api/llm/health")
+
+    @mcp.tool()
+    def llm_models() -> Dict[str, Any]:
+        """List models exposed by the configured llama.cpp server."""
+        return hexstrike_client.safe_get("api/llm/models")
+
+    @mcp.tool()
+    def llm_chat(messages: List[Dict[str, str]], model: str = "", temperature: float = 0.7, max_tokens: int = 0) -> Dict[str, Any]:
+        """Send chat messages to the configured llama.cpp server.
+
+        Args:
+            messages: Chat messages in OpenAI format, for example [{"role":"user","content":"Hello"}]
+            model: Optional model ID; defaults to LLAMA_MODEL
+            temperature: Sampling temperature
+            max_tokens: Optional response token limit; 0 leaves it unset
+        """
+        payload = {
+            "messages": messages,
+            "temperature": temperature,
+            "stream": False
+        }
+        if model:
+            payload["model"] = model
+        if max_tokens > 0:
+            payload["max_tokens"] = max_tokens
+        return hexstrike_client.safe_post("api/llm/chat/completions", payload)
+
     return mcp
 
 def parse_args():

@@ -98,6 +98,28 @@ app.config['JSON_SORT_KEYS'] = False
 API_PORT = int(os.environ.get('HEXSTRIKE_PORT', 8888))
 API_HOST = os.environ.get('HEXSTRIKE_HOST', '127.0.0.1')
 
+# llama.cpp OpenAI-compatible API Configuration
+LLAMA_API_URL = os.environ.get(
+    'LLAMA_API_URL',
+    'https://truck-kissable-caption.ngrok-free.dev/v1'
+).rstrip('/')
+LLAMA_MODEL = os.environ.get(
+    'LLAMA_MODEL',
+    '/home/fatal0x01/models/qwen2.5-coder-14b-instruct-q4_k_m.gguf'
+)
+LLAMA_API_KEY_FILE = os.path.expanduser(os.environ.get(
+    'LLAMA_API_KEY_FILE',
+    '~/.config/llama-ngrok/api-key.txt'
+))
+LLAMA_API_KEY = os.environ.get('LLAMA_API_KEY')
+if not LLAMA_API_KEY:
+    try:
+        with open(LLAMA_API_KEY_FILE, 'r', encoding='utf-8') as key_file:
+            LLAMA_API_KEY = key_file.read().strip()
+    except (FileNotFoundError, OSError, PermissionError):
+        LLAMA_API_KEY = None
+LLAMA_REQUEST_TIMEOUT = int(os.environ.get('LLAMA_REQUEST_TIMEOUT', '300'))
+
 # ============================================================================
 # MODERN VISUAL ENGINE (v2.0 ENHANCEMENT)
 # ============================================================================
@@ -9531,6 +9553,93 @@ def format_tool_output():
     except Exception as e:
         logger.error(f"💥 Error formatting tool output: {str(e)}")
         return jsonify({"error": f"Server error: {str(e)}"}), 500
+
+# ============================================================================
+# LLAMA.CPP OPENAI-COMPATIBLE API ENDPOINTS
+# ============================================================================
+
+def llama_headers():
+    """Build headers for an authenticated llama.cpp OpenAI-compatible request."""
+    headers = {"Content-Type": "application/json", "Accept": "application/json"}
+    if LLAMA_API_KEY:
+        headers["Authorization"] = f"Bearer {LLAMA_API_KEY}"
+    return headers
+
+@app.route("/api/llm/health", methods=["GET"])
+def llama_health():
+    """Check connectivity and authentication against the configured llama.cpp server."""
+    try:
+        response = requests.get(
+            f"{LLAMA_API_URL}/models",
+            headers=llama_headers(),
+            timeout=min(LLAMA_REQUEST_TIMEOUT, 30)
+        )
+        if response.status_code >= 400:
+            return jsonify({
+                "success": False,
+                "status_code": response.status_code,
+                "error": "llama.cpp authentication or connectivity check failed"
+            }), response.status_code
+
+        models = response.json()
+        return jsonify({
+            "success": True,
+            "status": "connected",
+            "api_url": LLAMA_API_URL,
+            "model": LLAMA_MODEL,
+            "authenticated": bool(LLAMA_API_KEY),
+            "models": models
+        })
+    except requests.exceptions.RequestException as exc:
+        logger.error("llama.cpp health check failed: %s", exc)
+        return jsonify({"success": False, "status": "unavailable", "error": str(exc)}), 502
+
+@app.route("/api/llm/models", methods=["GET"])
+def llama_models():
+    """List models available from llama.cpp."""
+    try:
+        response = requests.get(
+            f"{LLAMA_API_URL}/models",
+            headers=llama_headers(),
+            timeout=min(LLAMA_REQUEST_TIMEOUT, 30)
+        )
+        response.raise_for_status()
+        return jsonify({"success": True, "data": response.json()})
+    except requests.exceptions.HTTPError as exc:
+        return jsonify({"success": False, "error": f"llama.cpp returned HTTP {exc.response.status_code}"}), exc.response.status_code
+    except requests.exceptions.RequestException as exc:
+        logger.error("llama.cpp model list failed: %s", exc)
+        return jsonify({"success": False, "error": str(exc)}), 502
+
+@app.route("/api/llm/chat/completions", methods=["POST"])
+def llama_chat_completions():
+    """Proxy chat completion requests to the configured llama.cpp server."""
+    data = request.get_json(silent=True) or {}
+    messages = data.get("messages")
+    if not isinstance(messages, list) or not messages:
+        return jsonify({"success": False, "error": "messages must be a non-empty array"}), 400
+
+    payload = dict(data)
+    payload["model"] = data.get("model") or LLAMA_MODEL
+    payload.setdefault("temperature", 0.7)
+    payload.setdefault("stream", False)
+
+    try:
+        response = requests.post(
+            f"{LLAMA_API_URL}/chat/completions",
+            headers=llama_headers(),
+            json=payload,
+            timeout=LLAMA_REQUEST_TIMEOUT
+        )
+        response.raise_for_status()
+        return jsonify({"success": True, "data": response.json()})
+    except requests.exceptions.HTTPError as exc:
+        details = exc.response.text.strip() if exc.response is not None else str(exc)
+        logger.error("llama.cpp chat completion failed with HTTP %s", exc.response.status_code if exc.response is not None else "unknown")
+        return jsonify({"success": False, "error": "llama.cpp request failed", "details": details}), exc.response.status_code if exc.response is not None else 502
+    except requests.exceptions.RequestException as exc:
+        logger.error("llama.cpp chat completion failed: %s", exc)
+        return jsonify({"success": False, "error": str(exc)}), 502
 
 # ============================================================================
 # INTELLIGENT DECISION ENGINE API ENDPOINTS
