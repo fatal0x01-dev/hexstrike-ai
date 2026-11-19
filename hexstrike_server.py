@@ -109,7 +109,7 @@ LLAMA_MODEL = os.environ.get(
 )
 LLAMA_API_KEY_FILE = os.path.expanduser(os.environ.get(
     'LLAMA_API_KEY_FILE',
-    '~/.config/llama-ngrok/api-key.txt'
+    '~/llama.cpp/api-key.txt'
 ))
 LLAMA_API_KEY = os.environ.get('LLAMA_API_KEY')
 if not LLAMA_API_KEY:

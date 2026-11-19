@@ -10,7 +10,7 @@ LLAMA_API_URL="${LLAMA_API_URL:-https://truck-kissable-caption.ngrok-free.dev/v1
 LLAMA_API_KEY_FILE="${LLAMA_API_KEY_FILE:-$HOME/.config/llama-ngrok/api-key.txt}"
 LLAMA_MODEL="${LLAMA_MODEL:-/home/fatal0x01/models/qwen2.5-coder-14b-instruct-q4_k_m.gguf}"
 LLAMA_REQUEST_TIMEOUT="${LLAMA_REQUEST_TIMEOUT:-300}"
-VENV_DIR="${VENV_DIR:-$SCRIPT_DIR/hexstrike-env}"
+VENV_DIR="${VENV_DIR:-$SCRIPT_DIR/.venv}"
 START_MCP=false
 DEBUG_ARGS=()
 
@@ -26,7 +26,7 @@ Options:
   --llama-url URL       llama.cpp OpenAI-compatible base URL
   --llama-key-file PATH llama.cpp bearer key file
   --llama-model MODEL   llama.cpp model ID
-  --venv PATH           Python virtual environment path (default: ./hexstrike-env)
+  --venv PATH           Python virtual environment path (default: ./.venv)
   -h, --help            Show this help
 USAGE
 }
